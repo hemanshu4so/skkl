@@ -11,6 +11,7 @@ export default function CreateShop() {
 
   const handleCreate = async () => {
     try {
+      // 🔐 Create Auth user
       const userCred = await createUserWithEmailAndPassword(
         auth,
         email,
@@ -20,18 +21,26 @@ export default function CreateShop() {
       const uid = userCred.user.uid;
       const shopId = "shop_" + Date.now();
 
+      // 🏪 Shop entry
       await setDoc(doc(db, "shops", shopId), {
         name: shopName,
         ownerId: uid,
-        createdAt: new Date()
+        plan: "trial",
+        status: "active",
+
+        trial: {
+          isTrial: true,
+          startDate: new Date(),
+          endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+        }
       });
 
+      // 👤 User entry
       await setDoc(doc(db, "users", uid), {
         name: ownerName,
         email,
         role: "admin",
-        shopId,
-        pin: "1234"
+        shopId
       });
 
       alert("Shop Created ✅");

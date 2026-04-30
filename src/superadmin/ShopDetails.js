@@ -23,33 +23,27 @@ export default function ShopDetails() {
   return (
     <div>
 
-      <button onClick={() => navigate(-1)} style={backBtn}>
-        ⬅ Back
-      </button>
+      <button onClick={() => navigate(-1)}>⬅ Back</button>
 
       <h2>{shop.name}</h2>
 
       <div style={card}>
-        <p><b>Shop ID:</b> {id}</p>
         <p><b>Owner ID:</b> {shop.ownerId}</p>
-        <p><b>Created:</b> {shop.createdAt?.toDate?.().toString()}</p>
+        <p><b>Plan:</b> {shop.plan}</p>
+        <p><b>Status:</b> {shop.status}</p>
+
+        <hr />
+
+        <p><b>Trial:</b> {shop.trial?.isTrial ? "Yes" : "No"}</p>
+        <p><b>Trial End:</b> {shop.trial?.endDate?.toDate?.().toString()}</p>
       </div>
     </div>
   );
 }
-
-const backBtn = {
-  marginBottom: "15px",
-  padding: "8px 12px",
-  background: "#333",
-  color: "#fff",
-  border: "none",
-  borderRadius: "6px",
-};
 
 const card = {
   background: "#111",
   color: "#fff",
   padding: "20px",
   borderRadius: "10px",
-};  
+};
