@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { db } from "../firebase";
-import { collection, getDocs } from "firebase/firestore";
+import { auth, db } from "../firebase";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 
 export default function Login() {
@@ -9,46 +10,68 @@ export default function Login() {
   const navigate = useNavigate();
 
   const handleLogin = async () => {
-  const snapshot = await getDocs(collection(db, "users"));
+    try {
+      // 🔐 Firebase Auth Login
+      const userCred = await signInWithEmailAndPassword(
+        auth,
+        email.trim(),
+        password
+      );
 
-  let foundUser = null;
+      const uid = userCred.user.uid;
 
-  snapshot.forEach((doc) => {
-    const data = doc.data();
+      // 🔍 1️⃣ try normal users collection
+      let userRef = doc(db, "users", uid);
+      let snap = await getDoc(userRef);
 
-    if (
-      data.email?.toLowerCase().trim() === email.toLowerCase().trim() &&
-      String(data.password).trim() === String(password).trim()
-    ) {
-      foundUser = { id: doc.id, ...data };
+      let role = "user";
+      let userData = null;
+
+      // 🔍 2️⃣ if not found → check superadmins
+      if (!snap.exists()) {
+        userRef = doc(db, "superadmins", uid);
+        snap = await getDoc(userRef);
+
+        if (!snap.exists()) {
+          alert("User data not found ❌");
+          return;
+        }
+
+        role = "superadmin";
+        userData = snap.data();
+      } else {
+        userData = snap.data();
+        role = userData.role || "user";
+      }
+
+      console.log("LOGIN USER:", userData);
+
+      // ✅ SAFE STORE (no password)
+      localStorage.setItem(
+        "user",
+        JSON.stringify({
+          uid: uid,
+          name: userData.name || "",
+          role: role,
+          shopId: userData.shopId || null,
+          pin: userData.pin || null
+        })
+      );
+
+      // 🚀 ROLE BASED ROUTING
+      if (role === "superadmin") {
+        navigate("/sa"); // 🔥 IMPORTANT CHANGE
+      } else if (role === "admin") {
+        navigate("/"); // later admin panel banavsu
+      } else {
+        navigate("/");
+      }
+
+    } catch (err) {
+      console.error(err);
+      alert("Invalid email or password ❌");
     }
-  });
-
-  if (!foundUser) {
-    alert("Invalid email or password ❌");
-    return;
-  }
-
-  const userPin =
-    foundUser.pin || foundUser?.permissions?.pin || "1234";
-
-  localStorage.setItem(
-    "user",
-    JSON.stringify({
-      id: foundUser.id,
-      name: foundUser.name,
-      email: foundUser.email,
-      role: foundUser.role,
-      pin: userPin,
-    })
-  );
-
-  if (foundUser.role === "superadmin") {
-    navigate("/superadmin");
-  } else {
-    navigate("/");
-  }
-};
+  };
 
   return (
     <div style={{ padding: "100px" }}>
@@ -56,6 +79,7 @@ export default function Login() {
 
       <input
         placeholder="Email"
+        value={email}
         onChange={(e) => setEmail(e.target.value)}
       />
       <br /><br />
@@ -63,6 +87,7 @@ export default function Login() {
       <input
         type="password"
         placeholder="Password"
+        value={password}
         onChange={(e) => setPassword(e.target.value)}
       />
       <br /><br />

@@ -1,52 +1,87 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { auth, db } from "../firebase";
+import { doc, getDoc } from "firebase/firestore";
 
 export default function LockScreen({ onUnlock }) {
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const checkPin = (value) => {
-    const userData = JSON.parse(localStorage.getItem("user"));
+  const checkPin = useCallback(async (value) => {
+    try {
+      setLoading(true);
 
-    console.log("Entered PIN:", value);
-    console.log("Saved PIN:", userData?.pin);
+      const user = auth.currentUser;
 
-    if (String(value) === String(userData?.pin)) {
-      setError("");
-      onUnlock();
-    } else {
-      setError("Wrong PIN ❌");
-      setPin("");
-
-      // 🔥 Shake animation FIXED (inside else)
-      const box = document.getElementById("lock-box");
-      if (box) {
-        box.style.animation = "shake 0.3s";
-        setTimeout(() => (box.style.animation = ""), 300);
+      if (!user) {
+        setError("Session expired ❌");
+        return;
       }
+
+      const uid = user.uid;
+
+      // 🔍 Check in users
+      let userRef = doc(db, "users", uid);
+      let snap = await getDoc(userRef);
+
+      // 🔍 If not → check superadmins
+      if (!snap.exists()) {
+        userRef = doc(db, "superadmins", uid);
+        snap = await getDoc(userRef);
+
+        if (!snap.exists()) {
+          setError("User not found ❌");
+          return;
+        }
+      }
+
+      const data = snap.data();
+
+      console.log("Entered PIN:", value);
+      console.log("DB PIN:", data.pin);
+
+      if (String(value) === String(data.pin)) {
+        setError("");
+        onUnlock();
+      } else {
+        setError("Wrong PIN ❌");
+        setPin("");
+
+        // 🔥 shake
+        const box = document.getElementById("lock-box");
+        if (box) {
+          box.style.animation = "shake 0.3s";
+          setTimeout(() => (box.style.animation = ""), 300);
+        }
+      }
+
+    } catch (err) {
+      console.error(err);
+      setError("Error checking PIN ❌");
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [onUnlock]);
 
   useEffect(() => {
     if (pin.length === 4) {
       checkPin(pin);
     }
-    // eslint-disable-next-line
-  }, [pin]);
+  }, [pin, checkPin]);
 
   return (
     <>
       <div style={styles.overlay}>
         <div id="lock-box" style={styles.box}>
-          <h2 style={{ marginBottom: "5px" }}>🔒 Locked</h2>
-          <p style={{ fontSize: "14px", color: "#aaa" }}>
-            Enter your 4-digit PIN
-          </p>
+          <h2>🔒 Locked</h2>
+          <p style={{ color: "#aaa" }}>Enter your 4-digit PIN</p>
 
           <input
             type="password"
             maxLength={4}
             value={pin}
             autoFocus
+            disabled={loading}
             onChange={(e) => {
               setError("");
               setPin(e.target.value);
@@ -54,9 +89,9 @@ export default function LockScreen({ onUnlock }) {
             style={styles.input}
           />
 
-          {error && (
-            <p style={{ color: "red", marginTop: "10px" }}>{error}</p>
-          )}
+          {loading && <p style={{ color: "#888" }}>Checking...</p>}
+
+          {error && <p style={{ color: "red" }}>{error}</p>}
         </div>
       </div>
 
@@ -83,13 +118,12 @@ const styles = {
     width: "100%",
     height: "100%",
     backdropFilter: "blur(6px)",
-    background: "rgba(0,0,0,0.5)",
+    background: "rgba(0,0,0,0.6)",
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
     zIndex: 9999,
   },
-
   box: {
     background: "#111",
     padding: "30px",
@@ -97,9 +131,7 @@ const styles = {
     textAlign: "center",
     width: "300px",
     color: "#fff",
-    boxShadow: "0 0 25px rgba(255,255,255,0.08)",
   },
-
   input: {
     marginTop: "15px",
     padding: "12px",
@@ -111,6 +143,5 @@ const styles = {
     border: "1px solid #333",
     background: "#1a1a1a",
     color: "#fff",
-    outline: "none",
   },
 };
