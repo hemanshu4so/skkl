@@ -1,12 +1,13 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 
-// Normal app
+// 🔹 Normal app
 import MainLayout from "./layout/MainLayout";
 import Dashboard from "./pages/Dashboard";
 import Customers from "./pages/Customers";
 import Login from "./pages/Login";
+import Renew from "./pages/Renew";
 
-// Super Admin
+// 🔹 Super Admin
 import SuperAdminLayout from "./superadmin/SuperAdminLayout";
 import SuperAdminDashboard from "./superadmin/SuperAdminDashboard";
 import CreateShop from "./superadmin/CreateShop";
@@ -19,11 +20,12 @@ function App() {
     <Router>
       <Routes>
 
-        {/* LOGIN */}
+        {/* 🔐 PUBLIC ROUTES */}
         <Route path="/login" element={<Login />} />
+        <Route path="/renew" element={<Renew />} />
 
-        {/* 🔥 SUPER ADMIN PANEL (ONLY ONCE) */}
-        <Route path="/sa/*" element={<SuperAdminLayout />}>
+        {/* ⚡ SUPER ADMIN PANEL */}
+        <Route path="/sa" element={<SuperAdminLayout />}>
           <Route index element={<SuperAdminDashboard />} />
           <Route path="create-shop" element={<CreateShop />} />
           <Route path="shops" element={<ShopsList />} />
@@ -31,8 +33,8 @@ function App() {
           <Route path="edit-shop/:id" element={<EditShop />} />
         </Route>
 
-        {/* 🔥 NORMAL CRM */}
-        <Route path="/*" element={<MainLayout />}>
+        {/* 🏪 NORMAL CRM PANEL */}
+        <Route path="/" element={<MainLayout />}>
           <Route index element={<Dashboard />} />
           <Route path="customers" element={<Customers />} />
         </Route>

@@ -3,6 +3,7 @@ import { auth, db } from "../firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
+import { checkShopAccess } from "../utils/checkAccess"; // 🔥 IMPORTANT
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -20,14 +21,14 @@ export default function Login() {
 
       const uid = userCred.user.uid;
 
-      // 🔍 1️⃣ try normal users collection
+      // 🔍 Check USERS collection
       let userRef = doc(db, "users", uid);
       let snap = await getDoc(userRef);
 
       let role = "user";
       let userData = null;
 
-      // 🔍 2️⃣ if not found → check superadmins
+      // 🔍 If not found → check SUPERADMIN
       if (!snap.exists()) {
         userRef = doc(db, "superadmins", uid);
         snap = await getDoc(userRef);
@@ -46,6 +47,16 @@ export default function Login() {
 
       console.log("LOGIN USER:", userData);
 
+      // 🔥 CHECK SHOP ACCESS (ONLY FOR NON-SUPERADMIN)
+      if (role !== "superadmin" && userData.shopId) {
+        const access = await checkShopAccess(userData.shopId);
+
+        if (!access.allowed) {
+          navigate("/renew");
+          return;
+        }
+      }
+
       // ✅ SAFE STORE (no password)
       localStorage.setItem(
         "user",
@@ -53,16 +64,13 @@ export default function Login() {
           uid: uid,
           name: userData.name || "",
           role: role,
-          shopId: userData.shopId || null,
-          pin: userData.pin || null
+          shopId: userData.shopId || null
         })
       );
 
       // 🚀 ROLE BASED ROUTING
       if (role === "superadmin") {
-        navigate("/sa"); // 🔥 IMPORTANT CHANGE
-      } else if (role === "admin") {
-        navigate("/"); // later admin panel banavsu
+        navigate("/sa");
       } else {
         navigate("/");
       }
